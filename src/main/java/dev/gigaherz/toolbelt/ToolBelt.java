@@ -22,9 +22,7 @@ import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.DataGenerator;
 import net.minecraft.data.recipes.*;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.IntTag;
-import net.minecraft.nbt.Tag;
+import net.minecraft.nbt.*;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.flag.FeatureFlagSet;
@@ -69,7 +67,11 @@ import org.apache.logging.log4j.Logger;
 import top.theillusivec4.curios.api.SlotTypeMessage;
 import top.theillusivec4.curios.api.type.capability.ICuriosItemHandler;
 
+import java.util.List;
+import java.util.Objects;
 import java.util.function.Consumer;
+
+import static com.mojang.text2speech.Narrator.LOGGER;
 
 @Mod(ToolBelt.MODID)
 public class ToolBelt
@@ -218,6 +220,24 @@ public class ToolBelt
 
         ItemStack left = ev.getLeft();
         ItemStack right = ev.getRight();
+
+        boolean hasMending = false;
+        if (right.hasTag() && right.getTag().contains("StoredEnchantments")) {
+            hasMending = right.getTag().getList("StoredEnchantments", Tag.TAG_COMPOUND).stream().anyMatch(enchantTag -> {
+                CompoundTag enchantCompoundTag = (CompoundTag) enchantTag;
+                String enchantName = enchantCompoundTag.getString("id");
+                return Objects.equals(enchantName, "minecraft:mending") || Objects.equals(enchantName, "lightmanscurrency:money_mending");
+            });
+        }
+        boolean hasNoMendingTag = left.getTags().anyMatch(tag -> {
+            LOGGER.warn(tag.location().toString());
+            return Objects.equals(tag.location().toString(), "kubejs:no_mending");
+        });
+
+        if (hasNoMendingTag && hasMending)
+            ev.setCanceled(true);
+
+
         if (left.getCount() <= 0 || left.getItem() != BELT.get())
             return;
         if (right.getCount() <= 0 || right.getItem() != POUCH.get())
