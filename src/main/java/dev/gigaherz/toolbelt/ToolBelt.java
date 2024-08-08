@@ -221,6 +221,9 @@ public class ToolBelt
         ItemStack left = ev.getLeft();
         ItemStack right = ev.getRight();
 
+        if (left.getCount() <= 0 || right.getCount() <= 0)
+            return;
+
         boolean hasMending = false;
         if (right.hasTag() && right.getTag().contains("StoredEnchantments")) {
             hasMending = right.getTag().getList("StoredEnchantments", Tag.TAG_COMPOUND).stream().anyMatch(enchantTag -> {
@@ -230,28 +233,35 @@ public class ToolBelt
             });
         }
         boolean hasNoMendingTag = left.getTags().anyMatch(tag -> {
-            LOGGER.warn(tag.location().toString());
             return Objects.equals(tag.location().toString(), "kubejs:no_mending");
         });
 
-        if (hasNoMendingTag && hasMending)
-            ev.setCanceled(true);
-
-
-        if (left.getCount() <= 0 || left.getItem() != BELT.get())
-            return;
-        if (right.getCount() <= 0 || right.getItem() != POUCH.get())
-            return;
-        int cost = ToolBeltItem.getUpgradeXP(left);
-        if (cost < 0)
-        {
+        if (hasNoMendingTag && hasMending) {
             ev.setCanceled(true);
             return;
         }
-        ev.setCost(cost);
-        ev.setMaterialCost(1);
 
-        ev.setOutput(ToolBeltItem.upgrade(left));
+        boolean hasBookRepairTag = left.getTags().anyMatch(tag -> {
+            return Objects.equals(tag.location().toString(), "kubejs:book_repair");
+        });
+        if (hasBookRepairTag && right.getItem() == Items.BOOK) {
+            ev.setCost(3);
+            ev.setMaterialCost(1);
+            left.setDamageValue(0);
+            ev.setOutput(left);
+            return;
+        }
+
+        if (left.getItem() == BELT.get() && right.getItem() == POUCH.get()) {
+            int cost = ToolBeltItem.getUpgradeXP(left);
+            if (cost < 0) {
+                ev.setCanceled(true);
+                return;
+            }
+            ev.setCost(cost);
+            ev.setMaterialCost(1);
+            ev.setOutput(ToolBeltItem.upgrade(left));
+        }
     }
 
     public static ResourceLocation location(String path)
